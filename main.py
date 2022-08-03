@@ -217,8 +217,9 @@ class Main(QtWidgets.QMainWindow, layout_form):
     ##### FUNCTIONS #####
     ##INTERFACE
     def atualizeData(self, i, a_list, mode):
+        """ Atualize the data in the interface """
         if mode == 'COUNTER':
-            #i: posição do último valor no buffer
+            #i: position of the last value on buffer
             self.lcdNumber_contA.display(a_list[i-1])
             self.plot.setData([np.arange(0,len(a_list)*self.tempoInt,self.tempoInt),a_list])
             self.label_relat.setText(str(i))
@@ -228,6 +229,7 @@ class Main(QtWidgets.QMainWindow, layout_form):
             self.plot.setData([np.arange(0,len(a_list)*self.largura,self.largura),a_list])
 
     def lockInterface(self, disabled = False):
+        """ Lock/Unlock interface buttons during acquisition"""
         #~pushButtons
         self.pushButton_emparelhar.setDisabled(disabled)
         self.pushButton_salvar.setDisabled(disabled)
@@ -247,6 +249,7 @@ class Main(QtWidgets.QMainWindow, layout_form):
 
 
     def changeParams(self):
+        """ When the input values are changed, atualize the variables"""
         self.tempoInt = self.spinBox_tempoInt.value()
         self.largura = self.spinBox_janelaInt.value()
         self.nAmostras = self.spinBox_nAmostras.value()
@@ -254,7 +257,7 @@ class Main(QtWidgets.QMainWindow, layout_form):
         self.mode = self.comboBox_modoOperacao.currentText()
         self.label_relat.setText("Ao inciar, os parâmetros serão alterados")
 
-        seconds = 2*(self.largura * self.nAmostras * self.nRep)/(1000000) #2* -> fator de conversão 13/03
+        seconds = 2*(self.largura * self.nAmostras * self.nRep)/(1000000) #2* -> fator de conversão 13/03/2020
         hours, rem = divmod(seconds, 3600)
         minutes, seconds = divmod(rem, 60)
         time = "{:0>2}:{:0>2}:{:0>2}"
@@ -262,6 +265,7 @@ class Main(QtWidgets.QMainWindow, layout_form):
 
     #MEDIÇÃO
     def measurementStart(self):
+        """Start/Abort measurement depending on the button state"""
         if self.pushButton_comandar.isChecked() == True:
             self.lockInterface(True)
             #self.plot.clearData()
@@ -278,6 +282,7 @@ class Main(QtWidgets.QMainWindow, layout_form):
             self.measurementAbort()
 
     def measurementAbort(self):
+        """Abort measurement routine"""
         self.rotinas.measurementStart = False
         self.rotinas.finish()
         time.sleep(0.5)
@@ -289,6 +294,7 @@ class Main(QtWidgets.QMainWindow, layout_form):
 
     #COMUNICAÇÃO SERIAL
     def changeSerialParams(self):
+        """ If the serial params are changes, do not allow communication before pairing"""
         self.pushButton_emparelhar.setDisabled(False)
         self.pushButton_comandar.setDisabled(True)
         self.comboBox_modoOperacao.setDisabled(True)
