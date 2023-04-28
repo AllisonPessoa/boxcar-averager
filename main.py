@@ -1,11 +1,12 @@
 """
 FEDERAL UNIVERSITY OF PERNAMBUCO - PHYSICS DEPARTMENT - NANO OPTICS LABORATORY
-                            DIGITAL MULTICHANNEL
+                            DIGITAL BOXCAR
 
-Graphical interface for communicatig with Arduino Time-Correlated Single Photon Counter device.
+Graphical user interface (GUI) for communicatig with Arduino Time-Correlated Single Photon Counter device.
 
                             Allison Pessoa
                                 2020
+Edition: October 2022
 
 """
 import sys
@@ -19,10 +20,9 @@ import numpy as np
 import time
 import os.path
 
-import serial
-from serial.tools import list_ports
-
-layout_form = uic.loadUiType("layout.ui")[0]
+import Arduino_TCSPC
+import serial.tools.list_ports
+#layout_form = uic.loadUiType("layout.ui")[0]
 
 class Plot():
     def __init__(self, widget_plot, toolbar):
@@ -65,7 +65,7 @@ class Worker(QtCore.QObject):
     parent = None
 
     atualizeListPorts = QtCore.pyqtSignal(list)
-    emparelhado = False
+    paired = False
     ser = None
     mode = 'COUNTER'
     nMode = 0
@@ -81,7 +81,7 @@ class Worker(QtCore.QObject):
     def loopWork(self):
         """ Loop being executed in parallel. Wait for the Start command before starting new acquisitions"""
         while 1:
-            if self.emparelhado == False:
+            if self.paired == False:
                 self.atualizeListPorts.emit(serial.tools.list_ports.comports())
             else:
                 if self.measurementStart == False:
@@ -97,6 +97,7 @@ class Worker(QtCore.QObject):
     def setParams(self, tempoInt, largura, nAmostras, nRep, mode):
         """ Emits the acquisition parameters to the device """
         self.tempoInt = tempoInt
+
         self.largura = largura
         self.nAmostras = nAmostras
         self.nRep = nRep
@@ -164,11 +165,20 @@ class Worker(QtCore.QObject):
         self.ser.reset_output_buffer()
         self.b_pos = 0
 
-class Main(QtWidgets.QMainWindow, layout_form):
+class ComboBoxMod(QtWidgets.QComboBox):
+    comboClicked = QtCore.pyqtSignal()
+
+    def showPopup(self):
+        self.comboClicked.emit()
+        super(ComboBoxMod, self).showPopup()
+
+class Main(QtWidgets.QMainWindow):
     """ Thread responsible by the user interface """
     def __init__(self, parent=None):
         QtWidgets.QWidget.__init__(self,parent)
-        self.setupUi(self)
+        file_layout = 'layout.ui'
+        uic.loadUi(file_layout, self)
+        #self.setupUi(self)
         ##### INITIAL PROPERTIES #####
         self.tempoInt = 1000
         self.largura = 10
@@ -177,10 +187,8 @@ class Main(QtWidgets.QMainWindow, layout_form):
         self.mode = 'COUNTER'
         #Serial Related
         self.boudRate = 9600
-        self.emparelhado = False
-        self.listPorts = serial.tools.list_ports.comports()
-        for i in range(len(self.listPorts)):
-            self.comboBox_portaSerial.addItem(self.listPorts[i].description, self.listPorts[i].name)
+        self.paired = False
+        self.updatePortlList()
         #Plot
         self.mainToolbar = self.addToolBar("Plot")
         self.plot = Plot(self.widget_plot, self.mainToolbar)
@@ -213,6 +221,10 @@ class Main(QtWidgets.QMainWindow, layout_form):
         self.rotinas.atualizeListPorts.connect(self.updateListPorts)
         self.rotinas.atualizeData.connect(self.atualizeData)
 
+    def updatePortlList(self):
+        self.listPorts = serial.tools.list_ports.comports()
+        for i in range(len(self.listPorts)):
+            self.comboBox_portaSerial.addItem(self.listPorts[i].description, self.listPorts[i].name)
 
     ##### FUNCTIONS #####
     ##INTERFACE
@@ -308,9 +320,9 @@ class Main(QtWidgets.QMainWindow, layout_form):
                 self.boudRate = self.spinBox_boudRate.value()
                 try:
                     self.rotinas.ser = serial.Serial(self.listPorts[portIndex].device, self.boudRate)
-                    self.emparelhado = True
-                    self.rotinas.emparelhado = True
-                    self.label_relat.setText("Dispositivo emparelhado com sucesso")
+                    self.paired = True
+                    self.rotinas.paired = True
+                    self.label_relat.setText("Dispositivo paired com sucesso")
                     self.pushButton_emparelhar.setText("Desconectar")
                     self.lockInterfaceParams(False)
                 except Exception as erro:
@@ -318,8 +330,8 @@ class Main(QtWidgets.QMainWindow, layout_form):
                     errorMessage =  erro.args[0]
                     self.label_relat.setText(errorMessage)
         else:
-            self.emparelhado = False
-            self.rotinas.emparelhado = False
+            self.paired = False
+            self.rotinas.paired = False
             self.label_relat.setText("Dispositivo desconectado")
             self.pushButton_emparelhar.setText("Emparelhar")
             self.lockInterfaceParams(True)
